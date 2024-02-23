@@ -9,55 +9,95 @@ mongoose.connect('mongodb+srv://monterokennethpaul:kenneth27@monteroapi.xvfvana.
   useUnifiedTopology: true
 });
 
-// Define schema and model
+
 const programSchema = new mongoose.Schema({
   name: String,
   courses: Object 
+
 });
 
 const Program = mongoose.model('Program', programSchema, 'LABORATORY1');
 
-// Define route to retrieve programs
+// Define route to retrieve programs with sorted courses by description
 app.get('/api/programs', async (req, res) => {
   try {
     const programs = await Program.find();
-    res.json(programs);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
 
-app.get('/api/courses/:courseCode', async (req, res) => {
-  try {
-    const courseCode = req.params.courseCode;
-    let foundCourse = null;
-
-    // Retrieve programs from the MongoDB database
-    const programs = await Program.find();
-
-    // Iterate through each program to find the course with the specified code
-    programs.forEach(program => {
-      Object.values(program).forEach(year => {
-        year.forEach(course => {
-          if (course.code === courseCode) {
-            foundCourse = course;
-          }
-        });
-      });
+    // Sort courses within each program by description
+    const sortedPrograms = programs.map(program => {
+      const sortedCourses = {};
+      for (const year in program.courses) {
+        sortedCourses[year] = program.courses[year].sort((a, b) => a.description.localeCompare(b.description));
+      }
+      return { ...program.toObject(), courses: sortedCourses };
     });
 
-    // If the course is found, return it; otherwise, return a "Course not found" error
-    if (foundCourse) {
-      res.json(foundCourse);
-    } else {
-      res.status(404).json({ error: 'Course not found' });
-    }
+    res.json(sortedPrograms);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 });
+
+
+
+/// retrieve all BSIS courses
+app.get('/api/programs/BSIS', async (req, res) => {
+  try {
+   
+    const programs = await Program.find();
+
+    
+    const allBSISCourses = programs.reduce((acc, program) => {
+      Object.values(program).forEach(year => {
+        if (Array.isArray(year)) {
+          year.forEach(course => {
+            if (course.tags.includes('BSIS')) {
+              acc.push(course);
+            }
+          });
+        }
+      });
+      return acc;
+    }, );
+
+    res.json(allBSISCourses);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+// retrieve all BSIT courses
+app.get('/api/programs/BSIT', async (req, res) => {
+  try {
+    
+    const programs = await Program.find();
+
+
+    const allBSITCourses = programs.reduce((acc, program) => {
+      Object.values(program).forEach(year => {
+        if (Array.isArray(year)) {
+          year.forEach(course => {
+            if (course.tags.includes('BSIT')) {
+              acc.push(course);
+            }
+          });
+        }
+      });
+      return acc;
+    }, );
+
+    res.json(allBSITCourses);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
+
 
 
 // Start the server
